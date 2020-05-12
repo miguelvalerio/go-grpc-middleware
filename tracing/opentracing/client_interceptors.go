@@ -24,7 +24,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 		if o.filterOutFunc != nil && !o.filterOutFunc(parentCtx, method) {
 			return invoker(parentCtx, method, req, reply, cc, opts...)
 		}
-		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method, o.opts...)
+		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method)
 		err := invoker(newCtx, method, req, reply, cc, opts...)
 		finishClientSpan(clientSpan, err)
 		return err
@@ -38,7 +38,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 		if o.filterOutFunc != nil && !o.filterOutFunc(parentCtx, method) {
 			return streamer(parentCtx, desc, cc, method, opts...)
 		}
-		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method, o.opts...)
+		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method)
 		clientStream, err := streamer(newCtx, desc, cc, method, opts...)
 		if err != nil {
 			finishClientSpan(clientSpan, err)
@@ -100,8 +100,8 @@ func (s *tracedClientStream) finishClientSpan(err error) {
 // ClientAddContextTags returns a context with specified opentracing tags, which
 // are used by UnaryClientInterceptor/StreamClientInterceptor when creating a
 // new span.
-func ClientAddContextTags(ctx context.Context, tags opentracing.Tags) context.Context {
-	return context.WithValue(ctx, clientSpanTagKey{}, tags)
+func ClientAddContextTags(ctx context.Context, opts ...opentracing.StartSpanOption) context.Context {
+	return context.WithValue(ctx, clientSpanTagKey{}, opts)
 }
 
 type clientSpanTagKey struct{}
@@ -117,8 +117,8 @@ func newClientSpanFromContext(ctx context.Context, tracer opentracing.Tracer, fu
 		grpcTag,
 	}
 	if tagx := ctx.Value(clientSpanTagKey{}); tagx != nil {
-		if opt, ok := tagx.(opentracing.StartSpanOption); ok {
-			opts = append(opts, opt)
+		if opts, ok := tagx.([]opentracing.StartSpanOption); ok {
+			opts = append(opts, opts...)
 		}
 	}
 	opts = append(opts, startOpts...)

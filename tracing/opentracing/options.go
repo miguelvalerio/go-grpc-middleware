@@ -24,7 +24,6 @@ type FilterFunc func(ctx context.Context, fullMethodName string) bool
 type options struct {
 	filterOutFunc FilterFunc
 	tracer        opentracing.Tracer
-	opts          []opentracing.StartSpanOption
 }
 
 func evaluateOptions(opts []Option) *options {
@@ -52,12 +51,5 @@ func WithFilterFunc(f FilterFunc) Option {
 func WithTracer(tracer opentracing.Tracer) Option {
 	return func(o *options) {
 		o.tracer = tracer
-	}
-}
-
-// WithStartSpanOpts sets additional options to be added when a new Span is started.
-func WithStartSpanOpts(opts ...opentracing.StartSpanOption) Option {
-	return func(o *options) {
-		o.opts = opts
 	}
 }
