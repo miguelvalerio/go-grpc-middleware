@@ -24,7 +24,7 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 		if o.filterOutFunc != nil && !o.filterOutFunc(parentCtx, method) {
 			return invoker(parentCtx, method, req, reply, cc, opts...)
 		}
-		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method)
+		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method, o.opts...)
 		err := invoker(newCtx, method, req, reply, cc, opts...)
 		finishClientSpan(clientSpan, err)
 		return err
@@ -38,7 +38,7 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 		if o.filterOutFunc != nil && !o.filterOutFunc(parentCtx, method) {
 			return streamer(parentCtx, desc, cc, method, opts...)
 		}
-		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method)
+		newCtx, clientSpan := newClientSpanFromContext(parentCtx, o.tracer, method, o.opts...)
 		clientStream, err := streamer(newCtx, desc, cc, method, opts...)
 		if err != nil {
 			finishClientSpan(clientSpan, err)
@@ -106,7 +106,7 @@ func ClientAddContextTags(ctx context.Context, tags opentracing.Tags) context.Co
 
 type clientSpanTagKey struct{}
 
-func newClientSpanFromContext(ctx context.Context, tracer opentracing.Tracer, fullMethodName string) (context.Context, opentracing.Span) {
+func newClientSpanFromContext(ctx context.Context, tracer opentracing.Tracer, fullMethodName string, startOpts ...opentracing.StartSpanOption) (context.Context, opentracing.Span) {
 	var parentSpanCtx opentracing.SpanContext
 	if parent := opentracing.SpanFromContext(ctx); parent != nil {
 		parentSpanCtx = parent.Context()
@@ -121,6 +121,7 @@ func newClientSpanFromContext(ctx context.Context, tracer opentracing.Tracer, fu
 			opts = append(opts, opt)
 		}
 	}
+	opts = append(opts, startOpts...)
 	clientSpan := tracer.StartSpan(fullMethodName, opts...)
 	// Make sure we add this to the metadata of the call, so it gets propagated:
 	md := metautils.ExtractOutgoing(ctx).Clone()
