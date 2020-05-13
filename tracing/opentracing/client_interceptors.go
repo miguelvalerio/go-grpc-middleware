@@ -117,8 +117,8 @@ func newClientSpanFromContext(ctx context.Context, tracer opentracing.Tracer, fu
 		grpcTag,
 	}
 	if tagx := ctx.Value(clientSpanTagKey{}); tagx != nil {
-		if opts, ok := tagx.([]opentracing.StartSpanOption); ok {
-			opts = append(opts, opts...)
+		if ctxOpts, ok := tagx.([]opentracing.StartSpanOption); ok {
+			opts = append(opts, ctxOpts...)
 		}
 	}
 	opts = append(opts, startOpts...)
